@@ -1,0 +1,133 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String    @id @default(cuid())
+  email              String    @unique
+  name               String?
+  passwordHash       String    @map("password_hash")
+  role               String    @default("user") // "user" or "admin"
+  emailVerified      Boolean   @default(false) @map("email_verified")
+  verificationToken  String?   @unique @map("verification_token")
+  resetToken         String?   @unique @map("reset_token")
+  resetTokenExpiry   DateTime? @map("reset_token_expiry")
+  stripeCustomerId   String?   @unique @map("stripe_customer_id")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+  orders             Order[]
+
+  @@map("users")
+}
+
+model Product {
+  id            String   @id @default(cuid())
+  name          String
+  description   String   @db.Text
+  price         Float
+  stripePriceId String?  @map("stripe_price_id") // Stripe Price ID for recurring or one-time
+  skillFileUrl  String?  @map("skill_file_url")
+  promptContent String?  @map("prompt_content") @db.Text
+  type          String // "skill", "prompt", "bundle"
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  orders        Order[]
+
+  @@map("products")
+}
+
+model Order {
+  id                String    @id @default(cuid())
+  userId            String    @map("user_id")
+  productId         String    @map("product_id")
+  stripeSessionId   String?   @unique @map("stripe_session_id")
+  stripePaymentId   String?   @map("stripe_payment_id")
+  amount            Float
+  currency          String    @default("usd")
+  status            String    @default("pending") // "pending", "completed", "failed", "refunded"
+  fulfilledAt       DateTime? @map("fulfilled_at")
+  downloadCount     Int       @default(0) @map("download_count")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  user              User      @relation(fields: [userId], references: [id])
+  product           Product   @relation(fields: [productId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@map("orders")
+}
+
+model SuccessMetric {
+  id           String   @id @default(cuid())
+  metricName   String   @map("metric_name")
+  metricValue  String   @map("metric_value")
+  displayOrder Int      @map("display_order")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("success_metrics")
+}
+
+model BlogPost {
+  id            String    @id @default(cuid())
+  title         String
+  slug          String    @unique
+  content       String    @db.Text
+  excerpt       String?   @db.Text
+  featuredImage String?   @map("featured_image")
+  author        String    @default("Emil")
+  publishedDate DateTime? @map("published_date")
+  status        String    @default("draft")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@map("blog_posts")
+}
+
+model ContactSubmission {
+  id          String   @id @default(cuid())
+  name        String
+  email       String
+  company     String?
+  inquiryType String   @default("other") @map("inquiry_type")
+  message     String   @db.Text
+  status      String   @default("new")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("contact_submissions")
+}
+
+model EmailLog {
+  id        String   @id @default(cuid())
+  email     String
+  type      String // "verification", "password_reset", "purchase_confirmation", "skill_delivery"
+  orderId   String?  @map("order_id")
+  sentAt    DateTime @default(now()) @map("sent_at")
+  status    String   @default("sent") // "sent", "failed", "bounced"
+  error     String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([email])
+  @@index([orderId])
+  @@index([type])
+  @@map("email_logs")
+}
+
+model DownloadLog {
+  id           String   @id @default(cuid())
+  orderId      String   @map("order_id")
+  fileType     String   @map("file_type") // "skill", "documentation", "prompt"
+  ipAddress    String   @map("ip_address")
+  downloadedAt DateTime @default(now()) @map("downloaded_at")
+
+  @@index([orderId])
+  @@map("download_logs")
+}

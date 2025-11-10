@@ -1,0 +1,12 @@
+# Ignore all files in storage directories
+*.skill
+*.pdf
+*.txt
+*.zip
+
+# But keep the README and directory structure
+!README.md
+!.gitignore
+!skills/.gitkeep
+!documentation/.gitkeep
+!prompts/.gitkeep
